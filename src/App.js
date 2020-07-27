@@ -66,18 +66,18 @@ class App extends Component {
   };
 
   handleEdit = () => {
-    const currentEvents = clone(this.state.events);
-    const removedOld = remove(currentEvents, {
+    const events = clone(this.state.events);
+    remove(events, {
       id: this.state.currentEvent.id,
     });
 
-    console.log(currentEvents);
+    console.log(events);
     console.log(this.state.events);
 
     this.setState({
       isEditModalOpen: !this.state.isEditModalOpen,
       events: [
-        ...removedOld,
+        ...events,
         {
           start: this.state.currentEvent.start,
           end: this.state.currentEvent.end,
