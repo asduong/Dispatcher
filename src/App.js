@@ -1,69 +1,129 @@
 import React, { Component } from "react";
-import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
+import { Modal, Button, Input } from "@material-ui/core";
+import { Calendar, momentLocalizer } from "react-big-calendar";
+
+import { remove, clone } from "lodash";
 
 import "./App.css";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
-import ModalCard from "./components/ModalCard";
-import EventCard from "./components/EventCard";
-
 const localizer = momentLocalizer(moment);
 
-let components = {
-  eventContainerWrapper: EventCard,
-};
+function idGen(init) {
+  return function () {
+    return init++;
+  };
+}
+
+const nextId = idGen(0);
 
 class App extends Component {
-  state = {
-    events: [],
-    isOpen: false,
+  constructor(props) {
+    super(props);
+    this.state = {
+      events: [],
+      isAddModalOpen: false,
+      isEditModalOpen: false,
+    };
+  }
+
+  toggleAddModal = (event) => {
+    if (!this.state.isEditModalOpen) {
+      this.setState({
+        currentEvent: event,
+        isAddModalOpen: !this.state.isAddModalOpen,
+      });
+    }
   };
 
-  handleSelect = ({ start, end }) => {
+  toggleEditModal = (event) => {
+    if (!this.state.isAddModalOpen) {
+      this.setState({
+        currentEvent: event,
+        isEditModalOpen: !this.state.isEditModalOpen,
+      });
+    }
+  };
+
+  handleChange = (e) => {
+    this.setState({ title: e.target.value });
+  };
+
+  handleAdd = () => {
     this.setState({
+      isAddModalOpen: !this.state.isAddModalOpen,
       events: [
         ...this.state.events,
         {
-          start,
-          end,
-          title: "Board room",
+          id: nextId(),
+          start: this.state.currentEvent.start,
+          end: this.state.currentEvent.end,
+          title: this.state.title,
         },
       ],
     });
   };
 
-  // toggleCreate = () => {
-  //   <SelectTaskCard onCreate={this.handleSelect} />;
-  // };
-  openModal = () => {
-    this.setState({ isOpen: true });
-  };
+  handleEdit = () => {
+    const currentEvents = clone(this.state.events);
+    const removedOld = remove(currentEvents, {
+      id: this.state.currentEvent.id,
+    });
 
-  closeModal = () => {
-    this.setState({ isOpen: false });
+    console.log(currentEvents);
+    console.log(this.state.events);
+
+    this.setState({
+      isEditModalOpen: !this.state.isEditModalOpen,
+      events: [
+        ...removedOld,
+        {
+          start: this.state.currentEvent.start,
+          end: this.state.currentEvent.end,
+          title: this.state.title,
+        },
+      ],
+    });
   };
 
   render() {
+    const { isEditModalOpen, isAddModalOpen, currentEvent } = this.state;
     return (
       <div className="App">
-        <button onClick={this.openModal}>Open Modal</button>
         <Calendar
-          components={{
-            event: EventCard,
-          }}
           localizer={localizer}
           defaultDate={new Date()}
           defaultView="week"
           events={this.state.events}
           selectable={true}
-          onSelectEvent={(event) => alert(event.title)}
-          onSelectSlot={this.handleSelect}
+          onSelectSlot={this.toggleAddModal}
+          onSelectEvent={this.toggleEditModal}
           views={["week"]}
           step={60}
           timeslots={1}
           style={{ height: "100vh" }}
         />
+        <Modal open={isAddModalOpen}>
+          <>
+            <Input type="text" onChange={this.handleChange} />
+            <Button color="primary" onClick={this.handleAdd}>
+              Create
+            </Button>
+          </>
+        </Modal>
+        <Modal open={isEditModalOpen} toggle={this.toggleEditModal}>
+          <>
+            <Input
+              type="text"
+              value={this.state.currentEvent && this.state.currentEvent.title}
+              onChange={this.handleChange}
+            />
+            <Button color="primary" onClick={this.handleEdit}>
+              Create
+            </Button>
+          </>
+        </Modal>
       </div>
     );
   }
