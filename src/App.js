@@ -93,6 +93,8 @@ class App extends Component {
     if (!this.state.isAddModalOpen) {
       this.setState({
         currentEvent: event,
+        task: event.task,
+        driverId: event.driverId,
         isEditModalOpen: !this.state.isEditModalOpen,
       });
     }
@@ -179,13 +181,10 @@ class App extends Component {
         </StyledModal>
         <StyledModal open={isEditModalOpen} onClose={this.toggleEditModal}>
           <DriverSelect
-            value={driverId || (currentEvent && currentEvent.driverId)}
+            value={driverId}
             handleChange={this.handleDriverChange}
           />
-          <TaskSelect
-            value={task || (currentEvent && currentEvent.task)}
-            handleChange={this.handleChange}
-          />
+          <TaskSelect value={task} handleChange={this.handleChange} />
           <Button color="primary" onClick={this.handleEdit}>
             Edit
           </Button>
