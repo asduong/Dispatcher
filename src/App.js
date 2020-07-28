@@ -75,29 +75,19 @@ class App extends Component {
     super(props);
     this.state = {
       events: [],
-      isAddModalOpen: false,
-      isEditModalOpen: false,
+      isModalOpen: false,
+      isEdit: false,
     };
   }
 
-  toggleAddModal = (event) => {
-    if (!this.state.isEditModalOpen) {
-      this.setState({
-        currentEvent: event,
-        isAddModalOpen: !this.state.isAddModalOpen,
-      });
-    }
-  };
-
-  toggleEditModal = (event) => {
-    if (!this.state.isAddModalOpen) {
-      this.setState({
-        currentEvent: event,
-        task: event.task,
-        driverId: event.driverId,
-        isEditModalOpen: !this.state.isEditModalOpen,
-      });
-    }
+  toggleModal = (event) => {
+    this.setState({
+      isEdit: !!event.driverId,
+      currentEvent: event,
+      task: event.task,
+      driverId: event.driverId,
+      isModalOpen: !this.state.isModalOpen,
+    });
   };
 
   handleChange = (e) => {
@@ -108,52 +98,43 @@ class App extends Component {
     this.setState({ driverId: e.target.value });
   };
 
-  insertEvent = (events) => ({
-    events: [
-      ...events,
-      {
-        id: nextId(),
-        start: this.state.currentEvent.start,
-        end: this.state.currentEvent.end,
-        title: this.state.driverId + " - " + this.state.task,
-        task: this.state.task,
-        driverId: this.state.driverId,
-      },
-    ],
-  });
-
-  handleAdd = () => {
-    this.setState({
-      isAddModalOpen: !this.state.isAddModalOpen,
-      ...this.insertEvent(this.state.events),
-      task: null,
-      driverId: null,
-    });
-  };
-
   handleEdit = () => {
-    const events = clone(this.state.events);
-    remove(events, {
-      id: this.state.currentEvent.id,
-    });
+    const {
+      events,
+      currentEvent,
+      isEdit,
+      isModalOpen,
+      driverId,
+      task,
+    } = this.state;
+    const clondedEvents = clone(events);
+
+    if (isEdit) {
+      remove(clondedEvents, {
+        id: currentEvent.id,
+      });
+    }
 
     this.setState({
-      isEditModalOpen: !this.state.isEditModalOpen,
+      isModalOpen: !isModalOpen,
       task: null,
       driverId: null,
-      ...this.insertEvent(events),
+      events: [
+        ...clondedEvents,
+        {
+          id: nextId(),
+          start: currentEvent.start,
+          end: currentEvent.end,
+          title: driverId + " - " + task,
+          task: task,
+          driverId: driverId,
+        },
+      ],
     });
   };
 
   render() {
-    const {
-      isEditModalOpen,
-      isAddModalOpen,
-      currentEvent,
-      events,
-      task,
-      driverId,
-    } = this.state;
+    const { isModalOpen, events, task, driverId, isEdit } = this.state;
 
     // const filteredEvents = filter(events, {driverId: "Driver 2"})
 
@@ -165,28 +146,21 @@ class App extends Component {
           defaultView="week"
           events={events}
           selectable={true}
-          onSelectSlot={this.toggleAddModal}
-          onSelectEvent={this.toggleEditModal}
+          onSelectSlot={this.toggleModal}
+          onSelectEvent={this.toggleModal}
           views={["week"]}
           step={60}
           timeslots={1}
           style={{ height: "100vh" }}
         />
-        <StyledModal open={isAddModalOpen} onClose={this.toggleAddModal}>
-          <DriverSelect handleChange={this.handleDriverChange} />
-          <TaskSelect handleChange={this.handleChange} />
-          <Button color="primary" onClick={this.handleAdd}>
-            Create
-          </Button>
-        </StyledModal>
-        <StyledModal open={isEditModalOpen} onClose={this.toggleEditModal}>
+        <StyledModal open={isModalOpen} onClose={this.toggleModal}>
           <DriverSelect
             value={driverId}
             handleChange={this.handleDriverChange}
           />
           <TaskSelect value={task} handleChange={this.handleChange} />
           <Button color="primary" onClick={this.handleEdit}>
-            Edit
+            {isEdit ? "Edit" : "Add"}
           </Button>
         </StyledModal>
       </div>
