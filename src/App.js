@@ -1,9 +1,17 @@
 import React, { Component } from "react";
 import moment from "moment";
-import { Modal, Button, Input } from "@material-ui/core";
+import {
+  Button,
+  Select,
+  MenuItem,
+  makeStyles,
+  InputLabel,
+} from "@material-ui/core";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 
 import { remove, clone } from "lodash";
+
+import StyledModal from "./components/StyledModal";
 
 import "./App.css";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -17,6 +25,50 @@ function idGen(init) {
 }
 
 const nextId = idGen(0);
+
+const useStyles = makeStyles((theme) => ({
+  formControl: {
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(3),
+    minWidth: "100%",
+  },
+}));
+
+const TaskSelect = ({ handleChange, value }) => {
+  const classes = useStyles();
+  return (
+    <>
+      <InputLabel>Task</InputLabel>
+      <Select
+        className={classes.formControl}
+        value={value}
+        onChange={handleChange}
+      >
+        <MenuItem value="Pick Up">Pick Up</MenuItem>
+        <MenuItem value="Drop Off">Drop Off</MenuItem>
+        <MenuItem value="Other">Other</MenuItem>
+      </Select>
+    </>
+  );
+};
+
+const DriverSelect = ({ handleChange, value }) => {
+  const classes = useStyles();
+  return (
+    <>
+      <InputLabel>Driver</InputLabel>
+      <Select
+        className={classes.formControl}
+        value={value}
+        onChange={handleChange}
+      >
+        <MenuItem value="Driver 1">Driver 1</MenuItem>
+        <MenuItem value="Driver 2">Driver 2</MenuItem>
+        <MenuItem value="Driver 3">Driver 3</MenuItem>
+      </Select>
+    </>
+  );
+};
 
 class App extends Component {
   constructor(props) {
@@ -47,21 +99,33 @@ class App extends Component {
   };
 
   handleChange = (e) => {
-    this.setState({ title: e.target.value });
+    this.setState({ task: e.target.value });
   };
+
+  handleDriverChange = (e) => {
+    this.setState({ driverId: e.target.value });
+  };
+
+  insertEvent = (events) => ({
+    events: [
+      ...events,
+      {
+        id: nextId(),
+        start: this.state.currentEvent.start,
+        end: this.state.currentEvent.end,
+        title: this.state.driverId + " - " + this.state.task,
+        task: this.state.task,
+        driverId: this.state.driverId,
+      },
+    ],
+  });
 
   handleAdd = () => {
     this.setState({
       isAddModalOpen: !this.state.isAddModalOpen,
-      events: [
-        ...this.state.events,
-        {
-          id: nextId(),
-          start: this.state.currentEvent.start,
-          end: this.state.currentEvent.end,
-          title: this.state.title,
-        },
-      ],
+      ...this.insertEvent(this.state.events),
+      task: null,
+      driverId: null,
     });
   };
 
@@ -71,31 +135,33 @@ class App extends Component {
       id: this.state.currentEvent.id,
     });
 
-    console.log(events);
-    console.log(this.state.events);
-
     this.setState({
       isEditModalOpen: !this.state.isEditModalOpen,
-      events: [
-        ...events,
-        {
-          start: this.state.currentEvent.start,
-          end: this.state.currentEvent.end,
-          title: this.state.title,
-        },
-      ],
+      task: null,
+      driverId: null,
+      ...this.insertEvent(events),
     });
   };
 
   render() {
-    const { isEditModalOpen, isAddModalOpen, currentEvent } = this.state;
+    const {
+      isEditModalOpen,
+      isAddModalOpen,
+      currentEvent,
+      events,
+      task,
+      driverId,
+    } = this.state;
+
+    // const filteredEvents = filter(events, {driverId: "Driver 2"})
+
     return (
       <div className="App">
         <Calendar
           localizer={localizer}
           defaultDate={new Date()}
           defaultView="week"
-          events={this.state.events}
+          events={events}
           selectable={true}
           onSelectSlot={this.toggleAddModal}
           onSelectEvent={this.toggleEditModal}
@@ -104,26 +170,26 @@ class App extends Component {
           timeslots={1}
           style={{ height: "100vh" }}
         />
-        <Modal open={isAddModalOpen}>
-          <>
-            <Input type="text" onChange={this.handleChange} />
-            <Button color="primary" onClick={this.handleAdd}>
-              Create
-            </Button>
-          </>
-        </Modal>
-        <Modal open={isEditModalOpen} toggle={this.toggleEditModal}>
-          <>
-            <Input
-              type="text"
-              value={this.state.currentEvent && this.state.currentEvent.title}
-              onChange={this.handleChange}
-            />
-            <Button color="primary" onClick={this.handleEdit}>
-              Create
-            </Button>
-          </>
-        </Modal>
+        <StyledModal open={isAddModalOpen} onClose={this.toggleAddModal}>
+          <DriverSelect handleChange={this.handleDriverChange} />
+          <TaskSelect handleChange={this.handleChange} />
+          <Button color="primary" onClick={this.handleAdd}>
+            Create
+          </Button>
+        </StyledModal>
+        <StyledModal open={isEditModalOpen} onClose={this.toggleEditModal}>
+          <DriverSelect
+            value={driverId || (currentEvent && currentEvent.driverId)}
+            handleChange={this.handleDriverChange}
+          />
+          <TaskSelect
+            value={task || (currentEvent && currentEvent.task)}
+            handleChange={this.handleChange}
+          />
+          <Button color="primary" onClick={this.handleEdit}>
+            Edit
+          </Button>
+        </StyledModal>
       </div>
     );
   }
