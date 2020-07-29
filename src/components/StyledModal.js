@@ -3,8 +3,8 @@ import { Modal, makeStyles } from "@material-ui/core";
 
 function getModalStyle() {
   return {
-    top: "50%",
-    left: "50%",
+    top: "30%",
+    left: "40%",
     transform: `translate(-50%, - 50%)`,
   };
 }

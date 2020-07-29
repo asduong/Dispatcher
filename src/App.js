@@ -1,15 +1,17 @@
 import React, { Component } from "react";
 import moment from "moment";
 import {
+  makeStyles,
   Button,
   Select,
   MenuItem,
-  makeStyles,
+  Input,
+  FormControl,
   InputLabel,
 } from "@material-ui/core";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 
-import { remove, clone } from "lodash";
+import { remove, clone, filter, map } from "lodash";
 
 import StyledModal from "./components/StyledModal";
 
@@ -30,43 +32,88 @@ const useStyles = makeStyles((theme) => ({
   formControl: {
     marginTop: theme.spacing(1),
     marginBottom: theme.spacing(3),
-    minWidth: "100%",
+    minWidth: "400px",
+  },
+
+  filterLabel: {
+    display: "inline-block",
+    paddingRight: theme.spacing(2),
+    paddingTop: theme.spacing(4),
+    marginLeft: theme.spacing(2),
+    textAlign: "bottom",
   },
 }));
 
-const TaskSelect = ({ handleChange, value }) => {
-  const classes = useStyles();
+const TaskSelect = ({ handleChange, value, classes }) => {
   return (
-    <>
+    <FormControl required className={classes.formControl}>
       <InputLabel>Task</InputLabel>
-      <Select
-        className={classes.formControl}
-        value={value}
-        onChange={handleChange}
-      >
+      <Select value={value} onChange={handleChange}>
         <MenuItem value="Pick Up">Pick Up</MenuItem>
         <MenuItem value="Drop Off">Drop Off</MenuItem>
         <MenuItem value="Other">Other</MenuItem>
       </Select>
+    </FormControl>
+  );
+};
+
+const DriverFilter = (props) => {
+  const classes = useStyles();
+  return (
+    <>
+      <div className={classes.filterLabel}>
+        <label>Filter Drivers: </label>
+      </div>
+      <DriverSelect classes={classes} {...props} />
     </>
   );
 };
 
-const DriverSelect = ({ handleChange, value }) => {
+const DriverSelect = ({ drivers, handleChange, value, disabled, classes }) => {
+  return (
+    <FormControl disabled={disabled} required className={classes.formControl}>
+      <InputLabel>Driver</InputLabel>
+      <Select value={value} onChange={handleChange}>
+        {map(drivers, ({ value, display }) => (
+          <MenuItem value={value}>{display}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
+};
+
+const StyledForm = ({
+  drivers,
+  driverId,
+  task,
+  filteredDriverId,
+  handleDriverChange,
+  handleChange,
+  handleEdit,
+  isEdit,
+}) => {
   const classes = useStyles();
   return (
-    <>
-      <InputLabel>Driver</InputLabel>
-      <Select
-        className={classes.formControl}
-        value={value}
-        onChange={handleChange}
-      >
-        <MenuItem value="Driver 1">Driver 1</MenuItem>
-        <MenuItem value="Driver 2">Driver 2</MenuItem>
-        <MenuItem value="Driver 3">Driver 3</MenuItem>
-      </Select>
-    </>
+    <form>
+      <DriverSelect
+        classes={classes}
+        disabled={!!filteredDriverId}
+        drivers={drivers}
+        value={driverId}
+      />
+      <TaskSelect value={task} classes={classes} />
+      <FormControl className={classes.formControl}>
+        <InputLabel>Description</InputLabel>
+        <Input value={""}></Input>
+      </FormControl>
+      <FormControl className={classes.formControl} required>
+        <InputLabel>Location</InputLabel>
+        <Input value={""}></Input>
+      </FormControl>
+      <Button color="primary" type="submit" onClick={handleEdit}>
+        {isEdit ? "Edit" : "Add"}
+      </Button>
+    </form>
   );
 };
 
@@ -74,6 +121,7 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      filteredDriverId: null,
       events: [],
       isModalOpen: false,
       isEdit: false,
@@ -85,7 +133,7 @@ class App extends Component {
       isEdit: !!event.driverId,
       currentEvent: event,
       task: event.task,
-      driverId: event.driverId,
+      driverId: this.state.filteredDriverId || event.driverId,
       isModalOpen: !this.state.isModalOpen,
     });
   };
@@ -98,6 +146,11 @@ class App extends Component {
     this.setState({ driverId: e.target.value });
   };
 
+  handleDriverFilter = (e) => {
+    const value = e.target.value;
+    this.setState({ filteredDriverId: value, driverId: value });
+  };
+
   handleEdit = () => {
     const {
       events,
@@ -107,6 +160,12 @@ class App extends Component {
       driverId,
       task,
     } = this.state;
+
+    if (!(driverId && task)) {
+      alert("fill out the data");
+      return;
+    }
+
     const clondedEvents = clone(events);
 
     if (isEdit) {
@@ -134,17 +193,38 @@ class App extends Component {
   };
 
   render() {
-    const { isModalOpen, events, task, driverId, isEdit } = this.state;
+    const {
+      isModalOpen,
+      events,
+      task,
+      driverId,
+      isEdit,
+      filteredDriverId,
+    } = this.state;
 
-    // const filteredEvents = filter(events, {driverId: "Driver 2"})
+    let filteredEvents = events;
+    if (filteredDriverId) {
+      filteredEvents = filter(events, { driverId: filteredDriverId });
+    }
+
+    const drivers = [
+      { value: "Driver 1", display: "Driver 1" },
+      { value: "Driver 2", display: "Driver 2" },
+      { value: "Driver 3", display: "Driver 3" },
+    ];
+    const driverFilter = [{ value: "", display: "All Drivers" }, ...drivers];
 
     return (
       <div className="App">
+        <DriverFilter
+          drivers={driverFilter}
+          handleChange={this.handleDriverFilter}
+        />
         <Calendar
           localizer={localizer}
           defaultDate={new Date()}
           defaultView="week"
-          events={events}
+          events={filteredEvents}
           selectable={true}
           onSelectSlot={this.toggleModal}
           onSelectEvent={this.toggleModal}
@@ -154,14 +234,14 @@ class App extends Component {
           style={{ height: "100vh" }}
         />
         <StyledModal open={isModalOpen} onClose={this.toggleModal}>
-          <DriverSelect
-            value={driverId}
-            handleChange={this.handleDriverChange}
+          <StyledForm
+            drivers={drivers}
+            filteredDriverId={filteredDriverId}
+            task={task}
+            driverId={driverId}
+            isEdit={isEdit}
+            handleEdit={this.handleEdit}
           />
-          <TaskSelect value={task} handleChange={this.handleChange} />
-          <Button color="primary" onClick={this.handleEdit}>
-            {isEdit ? "Edit" : "Add"}
-          </Button>
         </StyledModal>
       </div>
     );
