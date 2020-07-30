@@ -10,6 +10,7 @@ import {
   InputLabel,
 } from "@material-ui/core";
 import { Calendar, momentLocalizer } from "react-big-calendar";
+import { CSVLink } from "react-csv";
 
 import { remove, clone, filter, map } from "lodash";
 
@@ -87,33 +88,48 @@ const StyledForm = ({
   driverId,
   task,
   filteredDriverId,
+  handleSubmit,
+  handleTaskChange,
   handleDriverChange,
-  handleChange,
-  handleEdit,
+  handleDescriptionChange,
+  handleLocationChange,
+  handleDelete,
   isEdit,
+  description,
+  location,
 }) => {
   const classes = useStyles();
   return (
-    <form>
+    <>
       <DriverSelect
         classes={classes}
         disabled={!!filteredDriverId}
         drivers={drivers}
         value={driverId}
+        handleChange={handleDriverChange}
       />
-      <TaskSelect value={task} classes={classes} />
-      <FormControl className={classes.formControl}>
+      <TaskSelect
+        value={task}
+        classes={classes}
+        handleChange={handleTaskChange}
+      />
+      <FormControl className={classes.formControl} required>
         <InputLabel>Description</InputLabel>
-        <Input value={""}></Input>
+        <Input value={description} onChange={handleDescriptionChange}></Input>
       </FormControl>
       <FormControl className={classes.formControl} required>
         <InputLabel>Location</InputLabel>
-        <Input value={""}></Input>
+        <Input value={location} onChange={handleLocationChange}></Input>
       </FormControl>
-      <Button color="primary" type="submit" onClick={handleEdit}>
+      <Button color="primary" onClick={handleSubmit}>
         {isEdit ? "Edit" : "Add"}
       </Button>
-    </form>
+      {isEdit && (
+        <Button color="secondary" onClick={handleDelete}>
+          Delete
+        </Button>
+      )}
+    </>
   );
 };
 
@@ -134,11 +150,13 @@ class App extends Component {
       currentEvent: event,
       task: event.task,
       driverId: this.state.filteredDriverId || event.driverId,
+      description: event.description,
+      location: event.location,
       isModalOpen: !this.state.isModalOpen,
     });
   };
 
-  handleChange = (e) => {
+  handleTaskChange = (e) => {
     this.setState({ task: e.target.value });
   };
 
@@ -146,23 +164,54 @@ class App extends Component {
     this.setState({ driverId: e.target.value });
   };
 
+  handleDescriptionChange = (e) => {
+    this.setState({ description: e.target.value });
+  };
+
+  handleLocationChange = (e) => {
+    this.setState({ location: e.target.value });
+  };
+
   handleDriverFilter = (e) => {
     const value = e.target.value;
     this.setState({ filteredDriverId: value, driverId: value });
   };
 
-  handleEdit = () => {
+  handleDelete = () => {
+    const { events, currentEvent, isEdit, isModalOpen } = this.state;
+
+    const clondedEvents = clone(events);
+
+    if (isEdit) {
+      remove(clondedEvents, {
+        id: currentEvent.id,
+      });
+    }
+
+    this.setState({
+      isModalOpen: !isModalOpen,
+      task: null,
+      driverId: null,
+      description: null,
+      location: null,
+      events: clondedEvents,
+    });
+  };
+
+  handleSubmit = () => {
     const {
       events,
       currentEvent,
       isEdit,
       isModalOpen,
       driverId,
+      description,
+      location,
       task,
     } = this.state;
 
-    if (!(driverId && task)) {
-      alert("fill out the data");
+    if (!(driverId && task && description && location)) {
+      alert("fill out the fields");
       return;
     }
 
@@ -178,6 +227,8 @@ class App extends Component {
       isModalOpen: !isModalOpen,
       task: null,
       driverId: null,
+      description: null,
+      location: null,
       events: [
         ...clondedEvents,
         {
@@ -185,8 +236,10 @@ class App extends Component {
           start: currentEvent.start,
           end: currentEvent.end,
           title: driverId + " - " + task,
-          task: task,
-          driverId: driverId,
+          task,
+          description,
+          driverId,
+          location,
         },
       ],
     });
@@ -199,6 +252,8 @@ class App extends Component {
       task,
       driverId,
       isEdit,
+      description,
+      location,
       filteredDriverId,
     } = this.state;
 
@@ -214,12 +269,27 @@ class App extends Component {
     ];
     const driverFilter = [{ value: "", display: "All Drivers" }, ...drivers];
 
+    const headers = [
+      { label: "Driver", key: "driverId" },
+      { label: "Task", key: "task" },
+      { label: "Description", key: "description" },
+      { label: "Location", key: "location" },
+    ];
+
     return (
       <div className="App">
         <DriverFilter
           drivers={driverFilter}
           handleChange={this.handleDriverFilter}
         />
+        <CSVLink
+          className="csv-export"
+          filename={`task-export-${filteredDriverId || "all"}.csv`}
+          data={filteredEvents}
+          headers={headers}
+        >
+          Export CSV
+        </CSVLink>
         <Calendar
           localizer={localizer}
           defaultDate={new Date()}
@@ -240,7 +310,14 @@ class App extends Component {
             task={task}
             driverId={driverId}
             isEdit={isEdit}
-            handleEdit={this.handleEdit}
+            description={description}
+            location={location}
+            handleSubmit={this.handleSubmit}
+            handleTaskChange={this.handleTaskChange}
+            handleDriverChange={this.handleDriverChange}
+            handleDescriptionChange={this.handleDescriptionChange}
+            handleLocationChange={this.handleLocationChange}
+            handleDelete={this.handleDelete}
           />
         </StyledModal>
       </div>
