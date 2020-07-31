@@ -8,13 +8,24 @@ import {
   Input,
   FormControl,
   InputLabel,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@material-ui/core";
+import {
+  KeyboardTimePicker,
+  MuiPickersUtilsProvider,
+} from "@material-ui/pickers";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import { CSVLink } from "react-csv";
-
-import { remove, clone, filter, map } from "lodash";
+import "date-fns";
+import DateFnsUtils from "@date-io/date-fns";
+import { remove, clone, filter, map, flatMap, each } from "lodash";
 
 import StyledModal from "./components/StyledModal";
+import hasOverlap from "./utils/overlap";
 
 import "./App.css";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -83,46 +94,81 @@ const DriverSelect = ({ drivers, handleChange, value, disabled, classes }) => {
   );
 };
 
+const AlertDialog = ({ open, handleClose, handleOK, title, content }) => {
+  return (
+    <Dialog open={open} onClose={handleClose}>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent>
+        <DialogContentText>{content}</DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>{handleOK ? "Cancel" : "OK"}</Button>
+        {handleOK && (
+          <Button onClick={handleOK} color="primary" autoFocus>
+            OK
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 const StyledForm = ({
   drivers,
-  driverId,
-  task,
   filteredDriverId,
   handleSubmit,
-  handleTaskChange,
-  handleDriverChange,
-  handleDescriptionChange,
-  handleLocationChange,
+  handleEventChange,
+  handleDateChange,
   handleDelete,
   isEdit,
-  description,
-  location,
+  currentEvent,
 }) => {
   const classes = useStyles();
+  const { driverId, task, start, end, location, description } = currentEvent;
   return (
     <>
+      <MuiPickersUtilsProvider utils={DateFnsUtils}>
+        <KeyboardTimePicker
+          margin="normal"
+          value={start}
+          minutesStep={60}
+          onChange={handleDateChange("start")}
+        />
+        <KeyboardTimePicker
+          margin="normal"
+          value={end}
+          minutesStep={60}
+          onChange={handleDateChange("end")}
+        />
+      </MuiPickersUtilsProvider>
       <DriverSelect
         classes={classes}
         disabled={!!filteredDriverId}
         drivers={drivers}
         value={driverId}
-        handleChange={handleDriverChange}
+        handleChange={handleEventChange("driverId")}
       />
       <TaskSelect
         value={task}
         classes={classes}
-        handleChange={handleTaskChange}
+        handleChange={handleEventChange("task")}
       />
       <FormControl className={classes.formControl} required>
         <InputLabel>Description</InputLabel>
-        <Input value={description} onChange={handleDescriptionChange}></Input>
+        <Input
+          value={description}
+          onChange={handleEventChange("description")}
+        ></Input>
       </FormControl>
       <FormControl className={classes.formControl} required>
         <InputLabel>Location</InputLabel>
-        <Input value={location} onChange={handleLocationChange}></Input>
+        <Input
+          value={location}
+          onChange={handleEventChange("location")}
+        ></Input>
       </FormControl>
       <Button color="primary" onClick={handleSubmit}>
-        {isEdit ? "Edit" : "Add"}
+        {isEdit ? "Update" : "Add"}
       </Button>
       {isEdit && (
         <Button color="secondary" onClick={handleDelete}>
@@ -141,35 +187,41 @@ class App extends Component {
       events: [],
       isModalOpen: false,
       isEdit: false,
+      isAlertDialogOpen: false,
+      overlapRanges: [],
+      hasError: false,
     };
   }
 
   toggleModal = (event) => {
     this.setState({
       isEdit: !!event.driverId,
-      currentEvent: event,
-      task: event.task,
-      driverId: this.state.filteredDriverId || event.driverId,
-      description: event.description,
-      location: event.location,
+      currentEvent: {
+        ...event,
+        driverId: this.state.filteredDriverId || event.driverId,
+      },
       isModalOpen: !this.state.isModalOpen,
     });
   };
 
-  handleTaskChange = (e) => {
-    this.setState({ task: e.target.value });
+  closeAlertDialog = () => {
+    this.setState({
+      isAlertDialogOpen: false,
+      hasError: false,
+      overlapRanges: [],
+    });
   };
 
-  handleDriverChange = (e) => {
-    this.setState({ driverId: e.target.value });
+  handleEventChange = (field) => (e) => {
+    this.setState({
+      currentEvent: { ...this.state.currentEvent, [field]: e.target.value },
+    });
   };
 
-  handleDescriptionChange = (e) => {
-    this.setState({ description: e.target.value });
-  };
-
-  handleLocationChange = (e) => {
-    this.setState({ location: e.target.value });
+  handleDateChange = (field) => (date) => {
+    this.setState({
+      currentEvent: { ...this.state.currentEvent, [field]: date },
+    });
   };
 
   handleDriverFilter = (e) => {
@@ -190,29 +242,17 @@ class App extends Component {
 
     this.setState({
       isModalOpen: !isModalOpen,
-      task: null,
-      driverId: null,
-      description: null,
-      location: null,
+      currentEvent: null,
       events: clondedEvents,
     });
   };
 
   handleSubmit = () => {
-    const {
-      events,
-      currentEvent,
-      isEdit,
-      isModalOpen,
-      driverId,
-      description,
-      location,
-      task,
-    } = this.state;
+    const { events, currentEvent, isEdit, isModalOpen } = this.state;
+    const { driverId, description, location, task, start, end } = currentEvent;
 
-    if (!(driverId && task && description && location)) {
-      alert("fill out the fields");
-      return;
+    if (!(driverId && task && description && location && start && end)) {
+      return this.setState({ hasError: true });
     }
 
     const clondedEvents = clone(events);
@@ -223,25 +263,61 @@ class App extends Component {
       });
     }
 
+    const updatedEvents = [
+      ...clondedEvents,
+      {
+        id: nextId(),
+        ...currentEvent,
+        title: `${driverId} - ${task} - ${description} @ ${location}`,
+      },
+    ];
+
+    const { overlap, ranges } = hasOverlap(
+      filter(updatedEvents, { driverId: currentEvent.driverId })
+    );
+
+    if (overlap) {
+      const overlapRanges = flatMap(ranges, ({ previous, current }) => [
+        previous,
+        current,
+      ]);
+
+      return this.setState({
+        isAlertDialogOpen: true,
+        overlapRanges,
+      });
+    }
+
     this.setState({
       isModalOpen: !isModalOpen,
-      task: null,
-      driverId: null,
-      description: null,
-      location: null,
-      events: [
-        ...clondedEvents,
-        {
-          id: nextId(),
-          start: currentEvent.start,
-          end: currentEvent.end,
-          title: driverId + " - " + task,
-          task,
-          description,
-          driverId,
-          location,
-        },
-      ],
+      currentEvent: null,
+      events: updatedEvents,
+    });
+  };
+
+  handleOverwrite = () => {
+    const { overlapRanges, events, currentEvent } = this.state;
+    const { driverId, task, description, location } = currentEvent;
+    const clondedEvents = clone(events);
+    each(overlapRanges, ({ id }) => {
+      remove(clondedEvents, {
+        id,
+      });
+    });
+
+    const updatedEvents = [
+      ...clondedEvents,
+      {
+        id: nextId(),
+        ...currentEvent,
+        title: `${driverId} - ${task} - ${description} @ ${location}`,
+      },
+    ];
+
+    this.setState({
+      isAlertDialogOpen: !this.state.isAlertDialogOpen,
+      isModalOpen: !this.state.isModalOpen,
+      events: updatedEvents,
     });
   };
 
@@ -249,12 +325,11 @@ class App extends Component {
     const {
       isModalOpen,
       events,
-      task,
-      driverId,
       isEdit,
-      description,
-      location,
       filteredDriverId,
+      currentEvent,
+      isAlertDialogOpen,
+      hasError,
     } = this.state;
 
     let filteredEvents = events;
@@ -278,6 +353,21 @@ class App extends Component {
 
     return (
       <div className="App">
+        <AlertDialog
+          id="overwrite-dialog"
+          open={isAlertDialogOpen}
+          title={"Overwrite existing event?"}
+          content={"Overwrite existing event?"}
+          handleClose={this.closeAlertDialog}
+          handleOK={this.handleOverwrite}
+        />
+        <AlertDialog
+          id="error-dialog"
+          open={hasError}
+          title={"Missing required fields"}
+          content={"Please fill out all the fields"}
+          handleClose={this.closeAlertDialog}
+        />
         <DriverFilter
           drivers={driverFilter}
           handleChange={this.handleDriverFilter}
@@ -307,16 +397,11 @@ class App extends Component {
           <StyledForm
             drivers={drivers}
             filteredDriverId={filteredDriverId}
-            task={task}
-            driverId={driverId}
+            currentEvent={currentEvent}
             isEdit={isEdit}
-            description={description}
-            location={location}
             handleSubmit={this.handleSubmit}
-            handleTaskChange={this.handleTaskChange}
-            handleDriverChange={this.handleDriverChange}
-            handleDescriptionChange={this.handleDescriptionChange}
-            handleLocationChange={this.handleLocationChange}
+            handleEventChange={this.handleEventChange}
+            handleDateChange={this.handleDateChange}
             handleDelete={this.handleDelete}
           />
         </StyledModal>
