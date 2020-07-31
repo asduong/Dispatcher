@@ -17,3 +17,9 @@ If _npm install_ fails, these are the following dependencies to install:
 - npm install react-csv
 - npm install @material-ui/core
 - npm install moment
+- npm install @date-io/date-fns
+
+
+#### Unfinished Tasks
+
+Added the CSV exports without choosing dates between 2, 4, 8, 14 days
