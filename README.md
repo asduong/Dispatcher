@@ -17,8 +17,8 @@ If _npm install_ fails, these are the following dependencies to install:
 - npm install react-csv
 - npm install @material-ui/core
 - npm install moment
-- npm install @date-io/date-fns
-
+- npm install @date-io/date-fns@1.3.13
+- npm install date-fns
 
 #### Unfinished Tasks
 

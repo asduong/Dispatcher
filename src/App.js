@@ -378,7 +378,7 @@ class App extends Component {
           data={filteredEvents}
           headers={headers}
         >
-          Export CSV
+          Download Schedule
         </CSVLink>
         <Calendar
           localizer={localizer}
