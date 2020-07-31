@@ -22,4 +22,4 @@ If _npm install_ fails, these are the following dependencies to install:
 
 #### Unfinished Tasks
 
-Added the CSV exports without choosing dates between 2, 4, 8, 14 days
+- Added the CSV exports without choosing dates between 2, 4, 7, 14, 28 days
