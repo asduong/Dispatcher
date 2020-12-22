@@ -1,34 +1,19 @@
-import React, { Component } from "react";
-import moment from "moment";
-import {
-  makeStyles,
-  Button,
-  Select,
-  MenuItem,
-  Input,
-  FormControl,
-  InputLabel,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@material-ui/core";
-import {
-  KeyboardTimePicker,
-  MuiPickersUtilsProvider,
-} from "@material-ui/pickers";
-import { Calendar, momentLocalizer } from "react-big-calendar";
-import { CSVLink } from "react-csv";
-import "date-fns";
-import DateFnsUtils from "@date-io/date-fns";
-import { remove, clone, filter, map, flatMap, each } from "lodash";
+import 'date-fns';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
 
-import StyledModal from "./components/StyledModal";
-import hasOverlap from "./utils/overlap";
+import './App.css';
 
-import "./App.css";
-import "react-big-calendar/lib/css/react-big-calendar.css";
+import { clone, each, filter, flatMap, remove } from 'lodash';
+import moment from 'moment';
+import React, { Component } from 'react';
+import { Calendar, momentLocalizer } from 'react-big-calendar';
+import { CSVLink } from 'react-csv';
+
+import AlertDialog from './components/AlertDialog';
+import DriverFilter from './components/DriverFilter';
+import StyledModal from './components/StyledModal';
+import TaskForm from './components/TaskForm';
+import hasOverlap from './utils/overlap';
 
 const localizer = momentLocalizer(moment);
 
@@ -39,145 +24,6 @@ function idGen(init) {
 }
 
 const nextId = idGen(0);
-
-const useStyles = makeStyles((theme) => ({
-  formControl: {
-    marginTop: theme.spacing(1),
-    marginBottom: theme.spacing(3),
-    minWidth: "400px",
-  },
-
-  filterLabel: {
-    display: "inline-block",
-    paddingRight: theme.spacing(2),
-    paddingTop: theme.spacing(4),
-    marginLeft: theme.spacing(2),
-    textAlign: "bottom",
-  },
-}));
-
-const TaskSelect = ({ handleChange, value, classes }) => {
-  return (
-    <FormControl required className={classes.formControl}>
-      <InputLabel>Task</InputLabel>
-      <Select value={value} onChange={handleChange}>
-        <MenuItem value="Pick Up">Pick Up</MenuItem>
-        <MenuItem value="Drop Off">Drop Off</MenuItem>
-        <MenuItem value="Other">Other</MenuItem>
-      </Select>
-    </FormControl>
-  );
-};
-
-const DriverFilter = (props) => {
-  const classes = useStyles();
-  return (
-    <>
-      <div className={classes.filterLabel}>
-        <label>Filter Drivers: </label>
-      </div>
-      <DriverSelect classes={classes} {...props} />
-    </>
-  );
-};
-
-const DriverSelect = ({ drivers, handleChange, value, disabled, classes }) => {
-  return (
-    <FormControl disabled={disabled} required className={classes.formControl}>
-      <InputLabel>Driver</InputLabel>
-      <Select value={value} onChange={handleChange}>
-        {map(drivers, ({ value, display }) => (
-          <MenuItem value={value}>{display}</MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  );
-};
-
-const AlertDialog = ({ open, handleClose, handleOK, title, content }) => {
-  return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <DialogContentText>{content}</DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>{handleOK ? "Cancel" : "OK"}</Button>
-        {handleOK && (
-          <Button onClick={handleOK} color="primary" autoFocus>
-            OK
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-const StyledForm = ({
-  drivers,
-  filteredDriverId,
-  handleSubmit,
-  handleEventChange,
-  handleDateChange,
-  handleDelete,
-  isEdit,
-  currentEvent,
-}) => {
-  const classes = useStyles();
-  const { driverId, task, start, end, location, description } = currentEvent;
-  return (
-    <>
-      <MuiPickersUtilsProvider utils={DateFnsUtils}>
-        <KeyboardTimePicker
-          margin="normal"
-          value={start}
-          minutesStep={60}
-          onChange={handleDateChange("start")}
-        />
-        <KeyboardTimePicker
-          margin="normal"
-          value={end}
-          minutesStep={60}
-          onChange={handleDateChange("end")}
-        />
-      </MuiPickersUtilsProvider>
-      <DriverSelect
-        classes={classes}
-        disabled={!!filteredDriverId}
-        drivers={drivers}
-        value={driverId}
-        handleChange={handleEventChange("driverId")}
-      />
-      <TaskSelect
-        value={task}
-        classes={classes}
-        handleChange={handleEventChange("task")}
-      />
-      <FormControl className={classes.formControl} required>
-        <InputLabel>Description</InputLabel>
-        <Input
-          value={description}
-          onChange={handleEventChange("description")}
-        ></Input>
-      </FormControl>
-      <FormControl className={classes.formControl} required>
-        <InputLabel>Location</InputLabel>
-        <Input
-          value={location}
-          onChange={handleEventChange("location")}
-        ></Input>
-      </FormControl>
-      <Button color="primary" onClick={handleSubmit}>
-        {isEdit ? "Update" : "Add"}
-      </Button>
-      {isEdit && (
-        <Button color="secondary" onClick={handleDelete}>
-          Delete
-        </Button>
-      )}
-    </>
-  );
-};
 
 class App extends Component {
   constructor(props) {
@@ -337,18 +183,20 @@ class App extends Component {
       filteredEvents = filter(events, { driverId: filteredDriverId });
     }
 
+    console.log(filteredEvents);
+
     const drivers = [
-      { value: "Driver 1", display: "Driver 1" },
-      { value: "Driver 2", display: "Driver 2" },
-      { value: "Driver 3", display: "Driver 3" },
+      { value: 'Driver 1', label: 'Driver 1' },
+      { value: 'Driver 2', label: 'Driver 2' },
+      { value: 'Driver 3', label: 'Driver 3' },
     ];
-    const driverFilter = [{ value: "", display: "All Drivers" }, ...drivers];
+    const driverFilter = [{ value: '', label: 'All Drivers' }, ...drivers];
 
     const headers = [
-      { label: "Driver", key: "driverId" },
-      { label: "Task", key: "task" },
-      { label: "Description", key: "description" },
-      { label: "Location", key: "location" },
+      { label: 'Driver', key: 'driverId' },
+      { label: 'Task', key: 'task' },
+      { label: 'Description', key: 'description' },
+      { label: 'Location', key: 'location' },
     ];
 
     return (
@@ -356,16 +204,16 @@ class App extends Component {
         <AlertDialog
           id="overwrite-dialog"
           open={isAlertDialogOpen}
-          title={"Overwrite existing event?"}
-          content={"Overwrite existing event?"}
+          title={'Overwrite existing event?'}
+          content={'Overwrite existing event?'}
           handleClose={this.closeAlertDialog}
           handleOK={this.handleOverwrite}
         />
         <AlertDialog
           id="error-dialog"
           open={hasError}
-          title={"Missing required fields"}
-          content={"Please fill out all the fields"}
+          title={'Missing required fields'}
+          content={'Please fill out all the fields'}
           handleClose={this.closeAlertDialog}
         />
         <DriverFilter
@@ -374,7 +222,7 @@ class App extends Component {
         />
         <CSVLink
           className="csv-export"
-          filename={`task-export-${filteredDriverId || "all"}.csv`}
+          filename={`task-export-${filteredDriverId || 'all'}.csv`}
           data={filteredEvents}
           headers={headers}
         >
@@ -388,13 +236,13 @@ class App extends Component {
           selectable={true}
           onSelectSlot={this.toggleModal}
           onSelectEvent={this.toggleModal}
-          views={["week"]}
+          views={['week']}
           step={60}
           timeslots={1}
-          style={{ height: "100vh" }}
+          style={{ height: '100vh' }}
         />
         <StyledModal open={isModalOpen} onClose={this.toggleModal}>
-          <StyledForm
+          <TaskForm
             drivers={drivers}
             filteredDriverId={filteredDriverId}
             currentEvent={currentEvent}

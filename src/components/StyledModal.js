@@ -1,20 +1,20 @@
-import React from "react";
-import { Modal, makeStyles } from "@material-ui/core";
+import { Modal, makeStyles } from '@material-ui/core';
+import React from 'react';
 
 function getModalStyle() {
   return {
-    top: "30%",
-    left: "40%",
+    top: '30%',
+    left: '40%',
     transform: `translate(-50%, - 50%)`,
   };
 }
 
 const useStyles = makeStyles((theme) => ({
   paper: {
-    position: "absolute",
+    position: 'absolute',
     width: 400,
     backgroundColor: theme.palette.background.paper,
-    border: "2px solid #000",
+    border: '2px solid #000',
     boxShadow: theme.shadows[5],
     padding: theme.spacing(2, 4, 3),
   },
