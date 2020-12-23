@@ -30,7 +30,7 @@ const overlap = (dateRanges) => {
       // check for any overlap
       var previousEnd = previous.end.getTime();
       var currentStart = current.start.getTime();
-      var overlap = previousEnd >= currentStart;
+      var overlap = previousEnd > currentStart;
 
       // store the result
       if (overlap) {
