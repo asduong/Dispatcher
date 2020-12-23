@@ -3,15 +3,17 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 import './App.css';
 
-import { clone, each, filter, flatMap, remove } from 'lodash';
+import { Button } from '@material-ui/core';
+import { clone, countBy, each, filter, flatMap, map, remove } from 'lodash';
 import moment from 'moment';
 import React, { Component } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import { CSVLink } from 'react-csv';
 
 import AlertDialog from './components/AlertDialog';
-import DriverFilter from './components/DriverFilter';
+import StyledFilter from './components/StyledFilter';
 import StyledModal from './components/StyledModal';
+import StyledSelect from './components/StyledSelect';
 import TaskForm from './components/TaskForm';
 import hasOverlap from './utils/overlap';
 
@@ -29,9 +31,12 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      filteredDriverId: null,
+      filteredDriverId: '',
+      downloadDriverId: '',
+      dateDivision: '',
       events: [],
-      isModalOpen: false,
+      isTaskModalOpen: false,
+      isDownloadModalOpen: false,
       isEdit: false,
       isAlertDialogOpen: false,
       overlapRanges: [],
@@ -39,14 +44,20 @@ class App extends Component {
     };
   }
 
-  toggleModal = (event) => {
+  toggleDownloadModal = (event) => {
+    this.setState({
+      isDownloadModalOpen: !this.state.isDownloadModalOpen,
+    });
+  };
+
+  toggleTaskModal = (event) => {
     this.setState({
       isEdit: !!event.driverId,
       currentEvent: {
         ...event,
         driverId: this.state.filteredDriverId || event.driverId,
       },
-      isModalOpen: !this.state.isModalOpen,
+      isTaskModalOpen: !this.state.isTaskModalOpen,
     });
   };
 
@@ -72,11 +83,25 @@ class App extends Component {
 
   handleDriverFilter = (e) => {
     const value = e.target.value;
-    this.setState({ filteredDriverId: value, driverId: value });
+    this.setState({
+      filteredDriverId: value,
+      driverId: value,
+      downloadDriverId: value,
+    });
+  };
+
+  handleDownloadDriverChange = (e) => {
+    const value = e.target.value;
+    this.setState({ downloadDriverId: value });
+  };
+
+  handleDateDivisionChange = (e) => {
+    const value = e.target.value;
+    this.setState({ dateDivision: value });
   };
 
   handleDelete = () => {
-    const { events, currentEvent, isEdit, isModalOpen } = this.state;
+    const { events, currentEvent, isEdit, isTaskModalOpen } = this.state;
 
     const clondedEvents = clone(events);
 
@@ -87,14 +112,14 @@ class App extends Component {
     }
 
     this.setState({
-      isModalOpen: !isModalOpen,
+      isTaskModalOpen: !isTaskModalOpen,
       currentEvent: null,
       events: clondedEvents,
     });
   };
 
   handleSubmit = () => {
-    const { events, currentEvent, isEdit, isModalOpen } = this.state;
+    const { events, currentEvent, isEdit, isTaskModalOpen } = this.state;
     const { driverId, description, location, task, start, end } = currentEvent;
 
     if (!(driverId && task && description && location && start && end)) {
@@ -135,7 +160,7 @@ class App extends Component {
     }
 
     this.setState({
-      isModalOpen: !isModalOpen,
+      isTaskModalOpen: !isTaskModalOpen,
       currentEvent: null,
       events: updatedEvents,
     });
@@ -162,17 +187,20 @@ class App extends Component {
 
     this.setState({
       isAlertDialogOpen: !this.state.isAlertDialogOpen,
-      isModalOpen: !this.state.isModalOpen,
+      isTaskModalOpen: !this.state.isTaskModalOpen,
       events: updatedEvents,
     });
   };
 
   render() {
     const {
-      isModalOpen,
+      isTaskModalOpen,
+      isDownloadModalOpen,
       events,
       isEdit,
       filteredDriverId,
+      downloadDriverId,
+      dateDivision,
       currentEvent,
       isAlertDialogOpen,
       hasError,
@@ -183,7 +211,42 @@ class App extends Component {
       filteredEvents = filter(events, { driverId: filteredDriverId });
     }
 
-    console.log(filteredEvents);
+    let downloadData = [];
+    if (dateDivision && downloadDriverId) {
+      const filteredData = filter(events, { driverId: downloadDriverId });
+      let groupEvents = {};
+      each(filteredData, (e) => {
+        // group key
+        // example:
+        // number of days (2020-12-20).timestamp - (2020-01-01).timestamp
+        // number of days difference / dateDivision in seconds
+        // to get group key
+        // 0 or 1 / 2 = 0
+        // 2 or 3 / 2 = 1
+        // 4 or 5 / 2 = 2
+        let group = Math.floor(
+          (moment(e.start).startOf('day').unix() -
+            moment().startOf('year').unix()) /
+            (24 * 3600 * dateDivision)
+        );
+
+        groupEvents[group] = groupEvents[group] || [];
+        groupEvents[group].push(e);
+      });
+
+      // Grouped by tasks
+      downloadData = map(groupEvents, (events, k) => {
+        let groupedCount = countBy(events, 'task');
+        const group = parseInt(k, 10);
+
+        return {
+          key: `Day ${group * dateDivision + 1} - Day ${
+            group * dateDivision + dateDivision
+          }`,
+          ...groupedCount,
+        };
+      });
+    }
 
     const drivers = [
       { value: 'Driver 1', label: 'Driver 1' },
@@ -191,12 +254,19 @@ class App extends Component {
       { value: 'Driver 3', label: 'Driver 3' },
     ];
     const driverFilter = [{ value: '', label: 'All Drivers' }, ...drivers];
+    const dateDivisions = [
+      { value: 2, label: '2 Days' },
+      { value: 4, label: '4 Days' },
+      { value: 7, label: '7 Days' },
+      { value: 14, label: '14 Days' },
+      { value: 28, label: '28 Days' },
+    ];
 
     const headers = [
-      { label: 'Driver', key: 'driverId' },
-      { label: 'Task', key: 'task' },
-      { label: 'Description', key: 'description' },
-      { label: 'Location', key: 'location' },
+      { label: 'Time-Frame', key: 'key' },
+      { label: 'Pickup', key: 'Pickup' },
+      { label: 'Drop-off', key: 'Drop-off' },
+      { label: 'Other', key: 'Other' },
     ];
 
     return (
@@ -216,32 +286,54 @@ class App extends Component {
           content={'Please fill out all the fields'}
           handleClose={this.closeAlertDialog}
         />
-        <DriverFilter
-          drivers={driverFilter}
+        <StyledFilter
+          label={'Filter Drivers: '}
+          value={filteredDriverId}
+          options={driverFilter}
           handleChange={this.handleDriverFilter}
         />
-        <CSVLink
-          className="csv-export"
-          filename={`task-export-${filteredDriverId || 'all'}.csv`}
-          data={filteredEvents}
-          headers={headers}
-        >
+        <Button onClick={this.toggleDownloadModal} color="primary">
           Download Schedule
-        </CSVLink>
+        </Button>
+        <StyledModal
+          open={isDownloadModalOpen}
+          onClose={this.toggleDownloadModal}
+        >
+          <StyledSelect
+            label={'Select driver: '}
+            value={downloadDriverId}
+            options={drivers}
+            handleChange={this.handleDownloadDriverChange}
+          />
+          <StyledSelect
+            label={'Select date division: '}
+            value={dateDivision}
+            options={dateDivisions}
+            handleChange={this.handleDateDivisionChange}
+          />
+          <CSVLink
+            className="csv-export"
+            filename={`task-export-${downloadDriverId || 'all'}.csv`}
+            data={downloadData}
+            headers={headers}
+          >
+            Download
+          </CSVLink>
+        </StyledModal>
         <Calendar
           localizer={localizer}
           defaultDate={new Date()}
           defaultView="week"
           events={filteredEvents}
           selectable={true}
-          onSelectSlot={this.toggleModal}
-          onSelectEvent={this.toggleModal}
+          onSelectSlot={this.toggleTaskModal}
+          onSelectEvent={this.toggleTaskModal}
           views={['week']}
           step={60}
           timeslots={1}
           style={{ height: '100vh' }}
         />
-        <StyledModal open={isModalOpen} onClose={this.toggleModal}>
+        <StyledModal open={isTaskModalOpen} onClose={this.toggleTaskModal}>
           <TaskForm
             drivers={drivers}
             filteredDriverId={filteredDriverId}

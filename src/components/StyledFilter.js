@@ -13,16 +13,17 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const DriverFilter = (props) => {
+// Similar to styledSelect, just have the label outside of the form control
+const StyledFilter = ({ label, ...otherProps }) => {
   const classes = useStyles();
   return (
     <>
       <div className={classes.filterLabel}>
-        <label>Filter Drivers: </label>
+        <label>{label}</label>
       </div>
-      <StyledSelect {...props} />
+      <StyledSelect {...otherProps} />
     </>
   );
 };
 
-export default DriverFilter;
+export default StyledFilter;

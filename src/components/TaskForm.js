@@ -19,10 +19,17 @@ const TaskForm = ({
   isEdit,
   currentEvent,
 }) => {
-  const { driverId, task, start, end, location, description } = currentEvent;
+  const {
+    driverId = '',
+    task = '',
+    start,
+    end,
+    location,
+    description,
+  } = currentEvent;
   const taskOptions = [
-    { value: 'Pick up', label: 'Pick up' },
-    { value: 'Drop off', label: 'Drop off' },
+    { value: 'Pickup', label: 'Pickup' },
+    { value: 'Drop-off', label: 'Drop-off' },
     { value: 'Other', label: 'Other' },
   ];
 

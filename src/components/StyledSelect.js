@@ -4,13 +4,21 @@ import React from 'react';
 
 import StyledFormControl from './StyledFormControl';
 
-const StyledSelect = ({ label, options, handleChange, value }) => {
+const StyledSelect = ({
+  label,
+  options,
+  handleChange,
+  value,
+  ...otherProps
+}) => {
   return (
-    <StyledFormControl required>
+    <StyledFormControl {...otherProps}>
       <InputLabel>{label}</InputLabel>
       <Select value={value} onChange={handleChange}>
         {map(options, ({ value, label }) => (
-          <MenuItem value={value}>{label}</MenuItem>
+          <MenuItem key={value} value={value}>
+            {label}
+          </MenuItem>
         ))}
       </Select>
     </StyledFormControl>
