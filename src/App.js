@@ -27,6 +27,27 @@ function idGen(init) {
 
 const nextId = idGen(0);
 
+const drivers = [
+  { value: 'Driver 1', label: 'Driver 1' },
+  { value: 'Driver 2', label: 'Driver 2' },
+  { value: 'Driver 3', label: 'Driver 3' },
+];
+const driverFilter = [{ value: '', label: 'All Drivers' }, ...drivers];
+const dateDivisions = [
+  { value: 2, label: '2 Days' },
+  { value: 4, label: '4 Days' },
+  { value: 7, label: '7 Days' },
+  { value: 14, label: '14 Days' },
+  { value: 28, label: '28 Days' },
+];
+
+const headers = [
+  { label: 'Time-Frame', key: 'key' },
+  { label: 'Pickup', key: 'Pickup' },
+  { label: 'Drop-off', key: 'Drop-off' },
+  { label: 'Other', key: 'Other' },
+];
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -247,27 +268,6 @@ class App extends Component {
         };
       });
     }
-
-    const drivers = [
-      { value: 'Driver 1', label: 'Driver 1' },
-      { value: 'Driver 2', label: 'Driver 2' },
-      { value: 'Driver 3', label: 'Driver 3' },
-    ];
-    const driverFilter = [{ value: '', label: 'All Drivers' }, ...drivers];
-    const dateDivisions = [
-      { value: 2, label: '2 Days' },
-      { value: 4, label: '4 Days' },
-      { value: 7, label: '7 Days' },
-      { value: 14, label: '14 Days' },
-      { value: 28, label: '28 Days' },
-    ];
-
-    const headers = [
-      { label: 'Time-Frame', key: 'key' },
-      { label: 'Pickup', key: 'Pickup' },
-      { label: 'Drop-off', key: 'Drop-off' },
-      { label: 'Other', key: 'Other' },
-    ];
 
     return (
       <div className="App">
