@@ -19,7 +19,3 @@ If _npm install_ fails, these are the following dependencies to install:
 - npm install moment
 - npm install @date-io/date-fns@1.3.13
 - npm install date-fns
-
-#### Unfinished Tasks
-
-- Added the CSV exports without choosing dates between 2, 4, 7, 14, 28 days
